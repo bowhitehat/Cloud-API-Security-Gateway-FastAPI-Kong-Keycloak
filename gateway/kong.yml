@@ -1,0 +1,43 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: auth-login-service
+    url: http://api:8000
+    routes:
+      - name: auth-login-route
+        paths:
+          - /auth/login
+        methods:
+          - POST
+        strip_path: false
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 5
+          limit_by: ip
+          policy: local
+          fault_tolerant: true
+          hide_client_headers: false
+      - name: file-log
+        config:
+          path: /tmp/kong-logs/api_access.log
+
+  - name: app-service
+    url: http://api:8000
+    routes:
+      - name: app-route
+        paths:
+          - /
+        strip_path: false
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 100
+          limit_by: ip
+          policy: local
+          fault_tolerant: true
+          hide_client_headers: false
+      - name: file-log
+        config:
+          path: /tmp/kong-logs/api_access.log

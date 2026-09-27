@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Small Company Order API Security Demo</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>Small Company Order System</h1>
+      <p>Giao diện demo cho đề tài bảo mật API: JWT, phân quyền, BOLA.</p>
+    </div>
+    <div class="user-box">
+      <span id="loginStatus">Chưa đăng nhập</span>
+      <button id="logoutBtn" class="secondary hidden">Đăng xuất</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card grid-2">
+      <div>
+        <h2>1. Đăng nhập (SSO qua Keycloak)</h2>
+        <p class="hint">Hệ thống đã chuyển sang kiến trúc Cloud IdP. Xác thực sẽ được thực hiện tại màn hình của Keycloak (chuẩn Authorization Code + PKCE).</p>
+        <div style="margin-top: 20px;">
+          <button id="kcLoginBtn" class="primary" style="padding: 10px 20px; font-size: 1.1em;">Đăng nhập bằng Keycloak</button>
+        </div>
+        <div style="margin-top: 20px;">
+          <p class="hint">Tài khoản mẫu: <strong>user1</strong>/password123 | <strong>user2</strong>/password123 | <strong>admin</strong>/admin123</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>2. Thông tin người dùng hiện tại</h2>
+      <button id="meBtn">GET /users/me</button>
+      <pre id="meOutput" class="output">Chưa có dữ liệu.</pre>
+    </section>
+
+    <section class="card grid-2">
+      <div>
+        <h2>3. Đơn hàng của tôi</h2>
+        <p class="hint">User thường chỉ thấy đơn hàng của chính mình. Admin thấy tất cả.</p>
+        <button id="loadOrdersBtn">Tải danh sách đơn hàng</button>
+        <div id="ordersList" class="cards-list"></div>
+      </div>
+
+      <div>
+        <h2>Tạo đơn hàng mới</h2>
+        <form id="createOrderForm" class="form">
+          <label>Tên sản phẩm/dịch vụ</label>
+          <input id="itemName" value="Dich vu bao tri may tinh" />
+          <label>Số tiền</label>
+          <input id="amount" type="number" value="1500000" min="1" />
+          <label>Trạng thái</label>
+          <select id="status">
+            <option value="pending">pending</option>
+            <option value="paid">paid</option>
+            <option value="cancelled">cancelled</option>
+          </select>
+          <button type="submit">POST /orders/</button>
+        </form>
+        <pre id="createOrderOutput" class="output">Chưa tạo đơn hàng.</pre>
+      </div>
+    </section>
+
+    <section class="card warning-card">
+      <h2>4. Demo lỗi BOLA</h2>
+      <p>
+        Đăng nhập bằng <strong>user1</strong>, sau đó nhập <strong>order_id = 2</strong>.
+        Order 2 thuộc về user2. Endpoint vulnerable sẽ trả dữ liệu sai, endpoint secure sẽ chặn 403.
+      </p>
+      <div class="bola-controls">
+        <label>Order ID cần thử</label>
+        <input id="bolaOrderId" type="number" value="2" min="1" />
+        <button id="testVulnerableBtn" class="danger">Gọi API lỗi: /orders/vulnerable/{id}</button>
+        <button id="testSecureBtn">Gọi API đã fix: /orders/{id}</button>
+      </div>
+      <div class="grid-2">
+        <div>
+          <h3>Kết quả API lỗi</h3>
+          <pre id="vulnerableOutput" class="output">Chưa test.</pre>
+        </div>
+        <div>
+          <h3>Kết quả API đã fix</h3>
+          <pre id="secureOutput" class="output">Chưa test.</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="card admin-card">
+      <h2>5. Admin panel</h2>
+      <p class="hint">Chỉ tài khoản admin/admin123 mới gọi được các API này.</p>
+      <div class="quick-row">
+        <button id="loadUsersBtn" class="secondary">GET /users/</button>
+        <button id="adminLoadOrdersBtn" class="secondary">GET /orders/</button>
+      </div>
+      <pre id="adminOutput" class="output">Chưa có dữ liệu.</pre>
+    </section>
+
+    <section class="card warning-card">
+      <h2>6. Demo lỗi SSRF</h2>
+      <p>
+        Nhập một URL bất kỳ để server tải về. Endpoint vulnerable cho phép tải URL nội bộ (ví dụ: http://localhost:8000/docs). Endpoint secure sẽ chặn các IP nội bộ.
+      </p>
+      <div class="bola-controls">
+        <label>URL cần tải</label>
+        <input id="ssrfUrl" type="text" value="http://localhost:8000/docs" />
+        <button id="testSsrfVulnerableBtn" class="danger">Gọi API lỗi: /fetch/vulnerable</button>
+        <button id="testSsrfSecureBtn">Gọi API đã fix: /fetch/secure</button>
+      </div>
+      <div class="grid-2">
+        <div>
+          <h3>Kết quả API lỗi</h3>
+          <pre id="ssrfVulnerableOutput" class="output">Chưa test.</pre>
+        </div>
+        <div>
+          <h3>Kết quả API đã fix</h3>
+          <pre id="ssrfSecureOutput" class="output">Chưa test.</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="card warning-card">
+      <h2>7. Demo lỗi Webhook Forgery</h2>
+      <p>
+        Gửi dữ liệu giả mạo đến hệ thống. Endpoint vulnerable không kiểm tra chữ ký, ai cũng gửi được. Endpoint secure yêu cầu header <code>X-Hub-Signature-256</code> phải khớp.
+      </p>
+      <div class="bola-controls">
+        <label>Dữ liệu giả mạo (JSON)</label>
+        <textarea id="webhookData" rows="3">{"order_id": 1, "status": "paid"}</textarea>
+        <label>Chữ ký giả mạo (Header X-Hub-Signature-256)</label>
+        <input id="webhookSignature" type="text" value="sha256=invalid_signature" />
+        <div class="quick-row">
+          <button id="testWebhookVulnerableBtn" class="danger">Gửi vào API lỗi: /webhooks/vulnerable</button>
+          <button id="testWebhookSecureBtn">Gửi vào API đã fix: /webhooks/secure</button>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div>
+          <h3>Kết quả API lỗi</h3>
+          <pre id="webhookVulnerableOutput" class="output">Chưa test.</pre>
+        </div>
+        <div>
+          <h3>Kết quả API đã fix</h3>
+          <pre id="webhookSecureOutput" class="output">Chưa test.</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="card warning-card">
+      <h2>8. Demo lỗi Excessive Data Exposure</h2>
+      <p>
+        Lấy danh sách người dùng. API lỗi sẽ trả về tất cả dữ liệu từ database (bao gồm cả chuỗi hash mật khẩu). API an toàn sử dụng schema/DTO để tự động lọc bỏ các trường nhạy cảm.
+      </p>
+      <div class="quick-row" style="margin-bottom: 10px;">
+        <button id="testExposureVulnerableBtn" class="danger">Gọi API lỗi: /users/exposure/vulnerable</button>
+        <button id="testExposureSecureBtn">Gọi API đã fix: /users/exposure/secure</button>
+      </div>
+      <div class="grid-2">
+        <div>
+          <h3>Kết quả API lỗi</h3>
+          <pre id="exposureVulnerableOutput" class="output">Chưa test.</pre>
+        </div>
+        <div>
+          <h3>Kết quả API đã fix</h3>
+          <pre id="exposureSecureOutput" class="output">Chưa test.</pre>
+        </div>
+      </div>
+    </section>
+
+    <section class="card notes">
+      <h2>Ghi chú thuyết trình</h2>
+      <ol>
+        <li>Web này chỉ là client. Phần chính của đề tài vẫn là API bảo mật bằng JWT và phân quyền.</li>
+        <li>Swagger vẫn dùng được tại <a href="/docs" target="_blank">/docs</a>.</li>
+        <li>Endpoint <code>/orders/vulnerable/{id}</code> cố tình bị lỗi để demo BOLA.</li>
+        <li>Endpoint <code>/orders/{id}</code> là bản đã kiểm tra owner_id và role admin.</li>
+      </ol>
+    </section>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
