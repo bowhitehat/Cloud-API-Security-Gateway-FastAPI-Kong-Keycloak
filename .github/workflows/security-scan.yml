@@ -67,4 +67,5 @@ jobs:
       with:
         target: 'http://localhost:8082'
         fail_action: false
+        allow_issue_writing: false
         cmd_options: '-a'
