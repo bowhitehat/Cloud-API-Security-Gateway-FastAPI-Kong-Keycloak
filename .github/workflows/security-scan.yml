@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Python 3.11
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: "3.11"
 
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -54,16 +54,25 @@ jobs:
     needs: [sast_and_dependency_scan]
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Build and Run Services using Docker Compose
       run: |
         docker compose up -d --build
-        echo "Waiting for services to be ready..."
-        sleep 15
+        echo "Waiting for Kong to expose the API..."
+        for attempt in {1..30}; do
+          if curl --fail --silent http://localhost:8082/health; then
+            echo "API is ready."
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "API did not become ready in time."
+        docker compose logs
+        exit 1
         
     - name: OWASP ZAP Baseline Scan
-      uses: zaproxy/action-baseline@v0.9.0
+      uses: zaproxy/action-baseline@v0.15.0
       with:
         target: 'http://localhost:8082'
         fail_action: false
